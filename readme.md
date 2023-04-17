@@ -7,6 +7,11 @@
 # How to run:
 ## Dependencies:
 ```sh
+conda create --name 578 python=3.10 -y
+conda activate 578
+```
+
+```sh
 pip install -r requirements.txt
 ```
 
