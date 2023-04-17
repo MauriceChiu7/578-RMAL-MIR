@@ -13,13 +13,14 @@ DISCOUNTING_FACTOR = 0.9
 def get_validation_set():
     pass
 
-def train_model(data):
-    pass
+# def train_model(data):
+#     pass
 
 def pretrain_policy():
     pass
 
 def oracle(x):
+    # read the label from the dataset
     pass
 
 def accuracy(clf, validation_set):
@@ -28,83 +29,96 @@ def accuracy(clf, validation_set):
 # TODO: Get validation set
 VALIDATION_SET = get_validation_set()
 
-def update_policy(al_policy, clf, train_set, batch, episodes, validation_set=VALIDATION_SET, learning_rate=LEARNING_RATE):
-    """
-    Algorithm 2: Update Agent
+# def update_policy(al_policy, clf, train_set, batch, episodes, validation_set=VALIDATION_SET, learning_rate=LEARNING_RATE):
+#     """
+#     Algorithm 2: Update Agent
 
-    inputs:
-    al_policy:      pi_phi          - the current AL agent policy
-    clf:            f               - the trained classifier since last batch update
-    train_set:      D               - the training set
-    batch:          N               - the batch of newly labeled samples (z_1, y_1), ..., (z_T, y_T)
-    episodes:       E               - the number of training episodes
+#     inputs:
+#     al_policy:      pi_phi          - the current AL agent policy
+#     clf:            f               - the trained classifier since last batch update
+#     train_set:      D               - the training set
+#     batch:          N               - the batch of newly labeled samples (z_1, y_1), ..., (z_T, y_T)
+#     episodes:       E               - the number of training episodes
 
-    outputs:
-    new_al_policy:  pi'             - the updated AL agent policy
-    """
-    # M <- {} - initialize the memory to be an empty set
-    memory = []
-    acc_old = accuracy(clf, validation_set)
-    for e in range(episodes):
-        proxy_clf = clf
-        random.shuffle(batch)
-        log_probs = []
+#     outputs:
+#     new_al_policy:  pi'             - the updated AL agent policy
+#     """
+#     # M <- {} - initialize the memory to be an empty set
+#     memory = []
+#     acc_old = accuracy(clf, validation_set)
+#     for e in range(episodes):
+#         proxy_clf = clf
+#         random.shuffle(batch)
+#         log_probs = []
 
-        for (z_t, y_t) in batch:
-            prediction = proxy_clf(z_t)
-            # TODO: should it be a different distribution for each z_t?
-            bernoulli = torch.distributions.bernoulli.Bernoulli(torch.tensor(al_policy(prediction)))
-            a_t = bernoulli.sample()
-            log_probs.append(bernoulli.log_prob(a_t))
+#         for (z_t, y_t) in batch:
+#             prediction = proxy_clf(z_t)
+#             # TODO: should it be a different distribution for each z_t?
+#             bernoulli = torch.distributions.bernoulli.Bernoulli(torch.tensor(al_policy(prediction)))
+#             a_t = bernoulli.sample()
+#             log_probs.append(bernoulli.log_prob(a_t))
 
-            if (a_t == 1):
-                memory = memory.append((z_t, y_t))
-                proxy_clf = train_model(train_set.append(memory))
-                acc = accuracy(proxy_clf, validation_set)
+#             if (a_t == 1):
+#                 memory = memory.append((z_t, y_t))
+#                 proxy_clf = train_model(train_set.append(memory))
+#                 acc = accuracy(proxy_clf, validation_set)
                 
-                # reward signal r_t which is subsequently used to update the agent
-                r_t = (acc-acc_old)/acc_old
+#                 # reward signal r_t which is subsequently used to update the agent
+#                 r_t = (acc-acc_old)/acc_old
 
-            else:
-                cf_clf = train_model(train_set.append(memory.append((z_t, y_t))))
-                acc_cf = accuracy(cf_clf, validation_set)
-                r_t = -(acc_cf-acc_old)/acc_old
-                # proxy_clf remains the same
-                # acc remains the same
+#             else:
+#                 cf_clf = train_model(train_set.append(memory.append((z_t, y_t))))
+#                 acc_cf = accuracy(cf_clf, validation_set)
+#                 r_t = -(acc_cf-acc_old)/acc_old
+#                 # proxy_clf remains the same
+#                 # acc remains the same
 
-        # TODO: al_policy here should really be the parameters of the policy
-        policy = al_policy + learning_rate * gradient(al_policy)
+#         # TODO: al_policy here should really be the parameters of the policy
+#         policy = al_policy + learning_rate * gradient(al_policy)
 
-    return policy # TODO: Not sure if this is the policy we want to return
+#     return policy # TODO: Not sure if this is the policy we want to return
 
-def rmal_al(init_train_set, data_stream, budget, batch_size, episodes):
+def rmal_al(clf, batch_x, batch_y, al_policy, u, t, budget):
     """
     Algorithm 1: RMAL-AL algorithm
 
     inputs:
-    init_data:      D_0             - initial dataset
-    data_stream:    {x_1, ..., x_N} - data stream
+    clf:            f               - the classifier
+    batch_x:        {x_1, ..., x_T} - the batch of newly labeled samples
+    batch_y:        {y_1, ..., y_T} - the batch of newly labeled samples
+    al_policy:      pi_phi          - the current AL agent policy
     budget:         b               - the number of samples u_t selected for training until time t
-    batch_size:     T               - the number of samples required for retraining
-    episodes:       E               - the number of training episodes for the udate_agent() function
 
     outputs:
-    clf:            f               - the final classifier
+    subset_x:       {x_1, ..., x_u} - the subset of x_1, ..., x_N selected by the active learner
+    subset_y:       {y_1, ..., y_u} - the subset of y_1, ..., y_N selected by the active learner
+    u:              u_t             - the number of samples selected for training until time t
+    t:              t               - the number of samples seen by the active learner
+
+    notes:
+    batch_size:     T               - the number of samples required for retraining
+    init_data:      D_0             - initial dataset
     """
-    # pi <- random - initialize AL agent policy = random
-    # TODO: not sure what this policy should be
-    al_policy = torch.rand(1)
+    
+    batch_size = len(batch_x)
+    subset_x = []
+    subset_y = []
 
-    # D <- D_0 - initialize the training set to be the initial dataset
-    train_set = init_train_set
+    for i in range(len(batch_size)):
+        bernoulli = torch.distributions.bernoulli.Bernoulli(torch.tensor(al_policy(clf, batch_x[i])))
+        a_i = bernoulli.sample()
+        if (u/t < budget and a_i == 1):
+            subset_x = subset_x.append(batch_x[i])
+            subset_y = subset_y.append(batch_y[i])
+            u += 1
+    return subset_x, subset_y, u, t+batch_size
 
-    # N <- {} - initialize the batch to be an empty set
-    batch = []
 
     # u <- 0 - number of training samples accumulated by the active learner
     u = 0
 
-    clf = train_model(train_set)
+    # clf = train_model(train_set)
+    clf = init_clf
     proxy_clf = clf
     pretrain_policy()
     for t in range(len(data_stream)):
