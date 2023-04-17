@@ -1,5 +1,8 @@
-DIR="$( cd "$( dirname "$0" )" && pwd )"
-mkdir -p  $DIR/datasets
+# DIR="$( cd "$( dirname "$0" )" && pwd )"
+# mkdir -p  $DIR/datasets
+DIR="$(pwd)"
+
+# echo $DIR
 
 echo "Downloading Core50 (128x128 version)..."
 echo $DIR'/datasets/core50/'
