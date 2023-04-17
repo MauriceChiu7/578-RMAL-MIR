@@ -78,7 +78,7 @@ VALIDATION_SET = get_validation_set()
 
 #     return policy # TODO: Not sure if this is the policy we want to return
 
-def rmal_al(clf, batch_x, batch_y, al_policy, u, t, budget):
+def rmal_al(batch_x, batch_y, al_policy, u, t, budget):
     """
     Algorithm 1: RMAL-AL algorithm
 
@@ -105,7 +105,8 @@ def rmal_al(clf, batch_x, batch_y, al_policy, u, t, budget):
     subset_y = []
 
     for i in range(len(batch_size)):
-        bernoulli = torch.distributions.bernoulli.Bernoulli(torch.tensor(al_policy(clf, batch_x[i])))
+        # al_policy takes in mean and covariance
+        bernoulli = torch.distributions.bernoulli.Bernoulli(torch.tensor(al_policy(batch_x[i])))
         a_i = bernoulli.sample()
         if (u/t < budget and a_i == 1):
             subset_x = subset_x.append(batch_x[i])

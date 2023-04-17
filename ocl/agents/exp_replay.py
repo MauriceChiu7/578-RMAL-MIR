@@ -6,7 +6,6 @@ from continuum.data_utils import dataset_transform
 from utils.setup_elements import transforms_match
 from utils.utils import maybe_cuda, AverageMeter
 
-
 class ExperienceReplay(ContinualLearner):
     def __init__(self, model, opt, params):
         super(ExperienceReplay, self).__init__(model, opt, params)
@@ -103,3 +102,39 @@ class ExperienceReplay(ContinualLearner):
                             .format(i, losses_mem.avg(), acc_mem.avg())
                     )
         self.after_train()
+
+    def rmal_al(batch_x, batch_y, al_policy, u, t, budget):
+        """
+        Algorithm 1: RMAL-AL algorithm
+
+        inputs:
+        clf:            f               - the classifier
+        batch_x:        {x_1, ..., x_T} - the batch of newly labeled samples
+        batch_y:        {y_1, ..., y_T} - the batch of newly labeled samples
+        al_policy:      pi_phi          - the current AL agent policy
+        budget:         b               - the number of samples u_t selected for training until time t
+
+        outputs:
+        subset_x:       {x_1, ..., x_u} - the subset of x_1, ..., x_N selected by the active learner
+        subset_y:       {y_1, ..., y_u} - the subset of y_1, ..., y_N selected by the active learner
+        u:              u_t             - the number of samples selected for training until time t
+        t:              t               - the number of samples seen by the active learner
+
+        notes:
+        batch_size:     T               - the number of samples required for retraining
+        init_data:      D_0             - initial dataset
+        """
+        
+        batch_size = len(batch_x)
+        subset_x = []
+        subset_y = []
+
+        for i in range(len(batch_size)):
+            # al_policy takes in mean and covariance
+            bernoulli = torch.distributions.bernoulli.Bernoulli(torch.tensor(al_policy(batch_x[i])))
+            a_i = bernoulli.sample()
+            if (u/t < budget and a_i == 1):
+                subset_x = subset_x.append(batch_x[i])
+                subset_y = subset_y.append(batch_y[i])
+                u += 1
+        return subset_x, subset_y, u, t+batch_size
