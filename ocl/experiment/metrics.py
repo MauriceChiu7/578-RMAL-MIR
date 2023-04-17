@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import sem
 import scipy.stats as stats
 
-def compute_performance(end_task_acc_arr):
+def compute_performance(end_task_acc_arr): # TODO: Might need to modify this so that it works during training.
     """
     Given test accuracy results from multiple runs saved in end_task_acc_arr,
     compute the average accuracy, forgetting, and task accuracies as well as their confidence intervals.
