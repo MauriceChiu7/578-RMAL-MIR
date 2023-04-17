@@ -186,6 +186,11 @@ if __name__ == "__main__":
                         help='warmup of buffer before retrieve')
     parser.add_argument('--head', type=str, default='mlp',
                         help='projection head')
+
+    ####################ActiveLearning###################
+    parser.add_argument('--budget', type=float, default=1.0,
+                        help='labeling budget for active learning')
+
     args = parser.parse_args()
     args.cuda = torch.cuda.is_available()
     main(args)
