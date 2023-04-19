@@ -1,6 +1,8 @@
 # git clone https://github.com/MauriceChiu7/578-RMAL-MIR.git
 # cd 578-RMAL-MIR/ocl
 
+pip install -r requirements.txt
+
 bash fetch_data_setup.sh
 
 # =================
