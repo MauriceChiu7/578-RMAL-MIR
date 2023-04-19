@@ -19,7 +19,7 @@ class ExperienceReplay(ContinualLearner):
         self.mean = torch.zeros(10)
         self.cov = torch.eye(10) # Default batch size is 10
 
-    def rmal_al(batch_x, batch_y, mean, covariance, u, t, budget):
+    def rmal_al(self, batch_x, batch_y, mean, covariance, u, t, budget):
         """
         Algorithm 1: RMAL-AL algorithm
 
@@ -60,7 +60,7 @@ class ExperienceReplay(ContinualLearner):
         return subset_x, subset_y, u, t+batch_size
     
     # Validation set has to be decided
-    def accuracy(clf,validation_set):
+    def accuracy(self, clf,validation_set):
         x_train = [x[0] for x in validation_set]
         y_train = [x[1] for x in validation_set]
         x_train = maybe_cuda(x_train, self.cuda)
@@ -69,7 +69,8 @@ class ExperienceReplay(ContinualLearner):
         _, pred_label = torch.max(logits, 1)
         acc = (pred_label == y_train).sum().item() / y_train.size(0)
         return acc
-    def update_policy(mean,covariance, clf, train_set, batch, episodes, validation_set=VALIDATION_SET, learning_rate=1e-6):
+    
+    def update_policy(self, mean,covariance, clf, train_set, batch, episodes, validation_set=VALIDATION_SET, learning_rate=1e-6):
         """
         Algorithm 2: Update Agent
 
@@ -88,7 +89,7 @@ class ExperienceReplay(ContinualLearner):
         training_set = set(train_set)
         
         # finding accuracy on validation set
-        acc_old = accuracy(clf,validation_set)
+        acc_old = self.accuracy(clf,validation_set)
         
         for e in range(episodes):
             #proxy_clf = clf
@@ -113,9 +114,9 @@ class ExperienceReplay(ContinualLearner):
                     memory = memory.add((z_t, y_t))
                     new_set = training_set | memory
                     x_train_new = [x[0] for x in new_set]
-                    y_train_new = [x[1] for x in new_Set]
-                    proxy_clf = train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
-                    acc = accuracy(proxy_clf, validation_set)
+                    y_train_new = [x[1] for x in new_set]
+                    proxy_clf = self.train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
+                    acc = self.accuracy(proxy_clf, validation_set)
                     # reward signal r_t which is subsequently used to update the agent
                     r_t = (acc-acc_old)/acc_old
                     clf = proxy_clf
@@ -124,9 +125,9 @@ class ExperienceReplay(ContinualLearner):
                     pt = {(z_t,y_t)}
                     new_set = training_set | memory | pt
                     x_train_new = [x[0] for x in new_set]
-                    y_train_new = [x[1] for x in new_Set]
-                    cf_clf = train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
-                    acc_cf = accuracy(cf_clf, validation_set)
+                    y_train_new = [x[1] for x in new_set]
+                    cf_clf = self.train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
+                    acc_cf = self.accuracy(cf_clf, validation_set)
                     r_t = -(acc_cf-acc_old)/acc_old
                     # proxy_clf remains the same
                     # acc remains the same
@@ -147,15 +148,20 @@ class ExperienceReplay(ContinualLearner):
             
             al_policy.backward()
             
+            base_line = 0.5
 
-            mean = torch.sum(
+
+            mean = torch.add(
                 mean, 
                 torch.mul(
                     torch.mul(
-                        learning_rate, 
-                        gaussian.mean
-                    )
-
+                        torch.mul(
+                            learning_rate, 
+                            gaussian.mean
+                        ),
+                        mean.grad
+                    ),
+                    torch.sub(discounted_rewards, base_line)
                 )
             )
             covariance = covariance + gaussian.covariance_matrix
