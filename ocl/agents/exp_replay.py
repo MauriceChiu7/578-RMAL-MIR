@@ -21,6 +21,8 @@ class ExperienceReplay(ContinualLearner):
         self.mean = torch.zeros(10)
         self.cov = torch.eye(10) # Default batch size is 10
         self.val_set = []
+        self.u = 0
+        self.t = 1
 
     def rmal_al(self, batch_x, batch_y, mean, covariance, u, t, budget):
         """
@@ -49,8 +51,8 @@ class ExperienceReplay(ContinualLearner):
         subset_y = []
 
         gaussian = torch.distributions.multivariate_normal.MultivariateNormal(mean, covariance)
-        for i in range(len(batch_size)):
-            batch_x[i] = maybe_cuda(batch_x[i], self.cuda)
+        for i in range(batch_size):
+            batch_x[i] = maybe_cuda(torch.tensor(batch_x[i]), self.cuda)
             # clf is initially trained on dataset D0 I am not sure how you guys are implementung this part
             logits = self.model.forward(batch_x[i]) # makes predictions on the datapoint x_t, the prediction is the state s_t
             _, s_t = torch.max(logits, 1)
