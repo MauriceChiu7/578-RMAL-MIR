@@ -61,7 +61,8 @@ class ExperienceReplay(ContinualLearner):
                 subset_x = subset_x.append(batch_x[i])
                 subset_y = subset_y.append(batch_y[i])
                 u += 1
-        return subset_x, subset_y, u, t+batch_size
+            t += 1
+        return subset_x, subset_y, u, t
     
     # Validation set has to be decided
     def accuracy(self, clf):
@@ -219,8 +220,8 @@ class ExperienceReplay(ContinualLearner):
                 # active learning: filter batch
                 if self.params.budget < 1.0:
                     # batch_x, batch_y, mean, covariance, u, t, budget
-                    self.rmal_al(batch_x, batch_y, self.mean, self.cov, self.u, self.t, self.params.budget)
-                    pass
+                    batch_x, batch_y, self.u, self.t = self.rmal_al(batch_x, batch_y, self.mean, self.cov, self.u, self.t, self.params.budget)
+
                 batch_x = maybe_cuda(batch_x, self.cuda)
                 batch_y = maybe_cuda(batch_y, self.cuda)
                 for j in range(self.mem_iters):
@@ -243,9 +244,8 @@ class ExperienceReplay(ContinualLearner):
 
                     # active learning: update policy
                     if self.params.budget < 1.0:
-                        # TODO call algorithm 2
-                        pass
-
+                        batch = [(batch_x[j], batch_y[j]) for j in range(batch_x.size(0))]
+                        self.mean, self.cov = self.update_policy(self.mean, self.cov, batch)
                     # mem update
                     mem_x, mem_y = self.buffer.retrieve(x=batch_x, y=batch_y)
                     if mem_x.size(0) > 0:
