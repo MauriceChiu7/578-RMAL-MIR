@@ -48,6 +48,7 @@ class ExperienceReplay(ContinualLearner):
         gaussian = torch.distributions.multivariate_normal.MultivariateNormal(mean, covariance)
         for i in range(len(batch_size)):
             batch_x[i] = maybe_cuda(batch_x[i], self.cuda)
+            # clf is initially trained on dataset D0 I am not sure how you guys are implementung this part
             logits = clf.forward(batch_x[i]) # makes predictions on the datapoint x_t, the prediction is the state s_t
             _, s_t = torch.max(logits, 1)
             al_policy = torch.exp(gaussian.log_prob(s_t))
@@ -113,7 +114,7 @@ class ExperienceReplay(ContinualLearner):
                     memory = memory.add((z_t, y_t))
                     new_set = training_set | memory
                     x_train_new = [x[0] for x in new_set]
-                    y_train_new = [x[1] for x in new_Set]
+                    y_train_new = [x[1] for x in new_set]
                     proxy_clf = train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
                     acc = accuracy(proxy_clf, validation_set)
                     # reward signal r_t which is subsequently used to update the agent
@@ -124,7 +125,7 @@ class ExperienceReplay(ContinualLearner):
                     pt = {(z_t,y_t)}
                     new_set = training_set | memory | pt
                     x_train_new = [x[0] for x in new_set]
-                    y_train_new = [x[1] for x in new_Set]
+                    y_train_new = [x[1] for x in new_set]
                     cf_clf = train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
                     acc_cf = accuracy(cf_clf, validation_set)
                     r_t = -(acc_cf-acc_old)/acc_old
