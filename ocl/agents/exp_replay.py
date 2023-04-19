@@ -52,7 +52,7 @@ class ExperienceReplay(ContinualLearner):
         for i in range(len(batch_size)):
             batch_x[i] = maybe_cuda(batch_x[i], self.cuda)
             # clf is initially trained on dataset D0 I am not sure how you guys are implementung this part
-            logits = clf.forward(batch_x[i]) # makes predictions on the datapoint x_t, the prediction is the state s_t
+            logits = self.model.forward(batch_x[i]) # makes predictions on the datapoint x_t, the prediction is the state s_t
             _, s_t = torch.max(logits, 1)
             al_policy = torch.exp(gaussian.log_prob(s_t))
             bernoulli = torch.distributions.bernoulli.Bernoulli(al_policy)
@@ -74,7 +74,7 @@ class ExperienceReplay(ContinualLearner):
         acc = (pred_label == y_train).sum().item() / y_train.size(0)
         return acc
     
-    def update_policy(self, mean, covariance, clf, train_set, batch, episodes, learning_rate=1e-6):
+    def update_policy(self, mean, covariance, batch, episodes=5, learning_rate=1e-6):
         """
         Algorithm 2: Update Agent
 
@@ -90,13 +90,14 @@ class ExperienceReplay(ContinualLearner):
         """
         # M <- {} - initialize the memory to be an empty set
         memory = set()
-        training_set = set(train_set)
+        
         
         # finding accuracy on validation set
-        acc_old = self.accuracy(clf,self.val_set)
+        acc_old = self.accuracy(self.model, self.val_set)
         
         for e in range(episodes):
-            #proxy_clf = clf
+            proxy_clf = copy.deepcopy(self.model)
+            
             random.shuffle(batch)
 
             log_probs = []
@@ -105,9 +106,10 @@ class ExperienceReplay(ContinualLearner):
             gaussian = torch.distributions.multivariate_normal.MultivariateNormal(mean, covariance)
             
             for (z_t, y_t) in batch:
+
                 z_t = maybe_cuda(z_t, self.cuda)
                 # batch_y = maybe_cuda(batch_y, self.cuda)
-                logits = clf.forward(z_t) # makes predictions on the datapoint z_t
+                logits = self.model.forward(z_t) # makes predictions on the datapoint z_t
                 _, s_t = torch.max(logits, 1)
                 
                 al_policy = gaussian.log_prob(s_t)
@@ -120,11 +122,12 @@ class ExperienceReplay(ContinualLearner):
                 r_t = torch.tensor(0, requires_grad=True)
                 if (a_t == 1):
                     memory = memory.add((z_t, y_t))
-                    new_set = training_set | memory
+
+                    new_set = memory
                     x_train_new = [x[0] for x in new_set]
                     y_train_new = [x[1] for x in new_set]
                     # proxy_clf = self.train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
-                    proxy_clf = copy.deepcopy(self.model)
+                    # proxy_clf = copy.deepcopy(self.model)
                     logits = proxy_clf.forward(x_train_new)
                     l = self.criterion(logits, y_train_new)
                     self.opt.zero_grad()
@@ -134,16 +137,17 @@ class ExperienceReplay(ContinualLearner):
                     acc = self.accuracy(proxy_clf, self.val_set)
                     # reward signal r_t which is subsequently used to update the agent
                     r_t = (acc-acc_old)/acc_old
-                    clf = proxy_clf
+                    self.model = copy.deepcopy(proxy_clf)
                     acc_old = acc
                 else:
                     pt = {(z_t,y_t)}
-                    new_set = training_set | memory | pt
+
+                    new_set = memory | pt
                     x_train_new = [x[0] for x in new_set]
                     y_train_new = [x[1] for x in new_set]
                     # cf_clf = self.train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
-                    proxy_clf = copy.deepcopy(self.model)
-                    logits = proxy_clf.forward(x_train_new)
+                    cf_clf = copy.deepcopy(self.model)
+                    logits = cf_clf.forward(x_train_new)
                     l = self.criterion(logits, y_train_new)
                     self.opt.zero_grad()
                     l.backward()
@@ -157,7 +161,7 @@ class ExperienceReplay(ContinualLearner):
                 rewards.append(r_t)
             
 
-            m = 999999999999999999
+            m = 1
             total_loss = torch.tensor(0)
             for k in range(m):
                 loss = torch.tensor(0)
@@ -177,14 +181,14 @@ class ExperienceReplay(ContinualLearner):
                 mean, 
                 torch.mul(
                     learning_rate, 
-                    gaussian.mean
+                    mean.grad
                 )
             )
             covariance = torch.add(
                 covariance, 
                 torch.mul(
                     learning_rate, 
-                    gaussian.covariance_matrix
+                    covariance.grad
                 )
             )
             print(f"DEBUG: covariance: {covariance}")
