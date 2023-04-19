@@ -47,7 +47,9 @@ class ExperienceReplay(ContinualLearner):
 
         gaussian = torch.distributions.multivariate_normal.MultivariateNormal(mean, covariance)
         for i in range(len(batch_size)):
-            # s_t = clf.predict(batch_x[i])
+            batch_x[i] = maybe_cuda(batch_x[i], self.cuda)
+            logits = clf.forward(batch_x[i]) # makes predictions on the datapoint x_t, the prediction is the state s_t
+            _, s_t = torch.max(logits, 1)
             al_policy = torch.exp(gaussian.log_prob(s_t))
             bernoulli = torch.distributions.bernoulli.Bernoulli(al_policy)
             a_i = bernoulli.sample()
@@ -58,6 +60,15 @@ class ExperienceReplay(ContinualLearner):
         return subset_x, subset_y, u, t+batch_size
     
     # Validation set has to be decided
+    def accuracy(clf,validation_set):
+        x_train = [x[0] for x in validation_set]
+        y_train = [x[1] for x in validation_set]
+        x_train = maybe_cuda(x_train, self.cuda)
+        y_train = maybe_cuda(y_train, self.cuda)
+        logits = clf.forward(x_train)
+        _, pred_label = torch.max(logits, 1)
+        acc = (pred_label == y_train).sum().item() / y_train.size(0)
+        return acc
     def update_policy(mean,covariance, clf, train_set, batch, episodes, validation_set=VALIDATION_SET, learning_rate=1e-6):
         """
         Algorithm 2: Update Agent
@@ -74,25 +85,36 @@ class ExperienceReplay(ContinualLearner):
         """
         # M <- {} - initialize the memory to be an empty set
         memory = set()
-        acc_old = accuracy(clf, validation_set)
         training_set = set(train_set)
+        
+        # finding accuracy on validation set
+        acc_old = accuracy(clf,validation_set)
+        
         for e in range(episodes):
             #proxy_clf = clf
             random.shuffle(batch)
             log_probs = [] # don't know why this is used
             rewards = []
             gaussian = torch.distributions.multivariate_normal.MultivariateNormal(mean, covariance)
+            
             for (z_t, y_t) in batch:
-                s_t = clf.predict(z_t)
-                al_policy = torch.exp(gaussian.log_prob(s_t))
-                log_probs.append(al_policy)
-                bernoulli = torch.distributions.bernoulli.Bernoulli(torch.tensor(al_policy))
+                z_t = maybe_cuda(z_t, self.cuda)
+                # batch_y = maybe_cuda(batch_y, self.cuda)
+                logits = clf.forward(z_t) # makes predictions on the datapoint z_t
+                _, s_t = torch.max(logits, 1)
+                al_policy = gaussian.log_prob(s_t)
+                pi = torch.exp(al_policy)
+                log_probs.append(al_policy) # storing the log probs here
+                bernoulli = torch.distributions.bernoulli.Bernoulli(torch.tensor(pi))
                 a_t = bernoulli.sample()
                 #log_probs.append(bernoulli.log_prob(a_t))
                 r_t = torch.tensor(0)
                 if (a_t == 1):
                     memory = memory.add((z_t, y_t))
-                    proxy_clf = train_model(training_set | memory)
+                    new_set = training_set | memory
+                    x_train_new = [x[0] for x in new_set]
+                    y_train_new = [x[1] for x in new_Set]
+                    proxy_clf = train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
                     acc = accuracy(proxy_clf, validation_set)
                     # reward signal r_t which is subsequently used to update the agent
                     r_t = (acc-acc_old)/acc_old
@@ -100,7 +122,10 @@ class ExperienceReplay(ContinualLearner):
                     acc_old = acc
                 else:
                     pt = {(z_t,y_t)}
-                    cf_clf = train_model(training_set | memory | pt)
+                    new_set = training_set | memory | pt
+                    x_train_new = [x[0] for x in new_set]
+                    y_train_new = [x[1] for x in new_Set]
+                    cf_clf = train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
                     acc_cf = accuracy(cf_clf, validation_set)
                     r_t = -(acc_cf-acc_old)/acc_old
                     # proxy_clf remains the same
@@ -117,6 +142,8 @@ class ExperienceReplay(ContinualLearner):
 
             total_rewards = torch.sum(torch.tensor(discounted_rewards))
             # TODO: al_policy here should really be the parameters of the policy
+            # compute the product of log_prob[i] * discounted_rewards[i] for all t and then compute the gradient using .backward
+            # should update mean and covariance separately not sure how torch takes care of that
             
             al_policy.backward()
             
