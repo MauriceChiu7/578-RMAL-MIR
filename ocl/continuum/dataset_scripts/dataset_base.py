@@ -42,6 +42,9 @@ class DatasetBase(ABC):
     def get_test_set(self):
         return self.test_set
 
+    def get_val_set(self):
+        return self.val_set
+
     def clean_mem_test_set(self):
         self.test_set = None
         self.test_data = None

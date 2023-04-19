@@ -24,6 +24,9 @@ class continuum(object):
 
     def test_data(self):
         return self.data_object.get_test_set()
+    
+    def val_data(self):
+        return self.data_object.get_val_set()
 
     def clean_mem_test_set(self):
         self.data_object.clean_mem_test_set()

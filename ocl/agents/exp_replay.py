@@ -6,6 +6,7 @@ from continuum.data_utils import dataset_transform
 from utils.setup_elements import transforms_match
 from utils.utils import maybe_cuda, AverageMeter
 import random
+import copy
 
 DISCOUNTING_FACTOR = 0.9
 BASELINE = 0.75
@@ -19,6 +20,7 @@ class ExperienceReplay(ContinualLearner):
         self.mem_iters = params.mem_iters
         self.mean = torch.zeros(10)
         self.cov = torch.eye(10) # Default batch size is 10
+        self.val_set = []
 
     def rmal_al(self, batch_x, batch_y, mean, covariance, u, t, budget):
         """
@@ -62,9 +64,9 @@ class ExperienceReplay(ContinualLearner):
         return subset_x, subset_y, u, t+batch_size
     
     # Validation set has to be decided
-    def accuracy(self, clf, validation_set):
-        x_train = [x[0] for x in validation_set]
-        y_train = [x[1] for x in validation_set]
+    def accuracy(self, clf):
+        x_train = [x[0] for x in self.val_set]
+        y_train = [x[1] for x in self.val_set]
         x_train = maybe_cuda(x_train, self.cuda)
         y_train = maybe_cuda(y_train, self.cuda)
         logits = clf.forward(x_train)
@@ -72,7 +74,7 @@ class ExperienceReplay(ContinualLearner):
         acc = (pred_label == y_train).sum().item() / y_train.size(0)
         return acc
     
-    def update_policy(self, mean, covariance, clf, train_set, batch, episodes, validation_set=VALIDATION_SET, learning_rate=1e-6):
+    def update_policy(self, mean, covariance, clf, train_set, batch, episodes, learning_rate=1e-6):
         """
         Algorithm 2: Update Agent
 
@@ -91,13 +93,13 @@ class ExperienceReplay(ContinualLearner):
         training_set = set(train_set)
         
         # finding accuracy on validation set
-        acc_old = accuracy(clf,validation_set)
+        acc_old = self.accuracy(clf,self.val_set)
         
         for e in range(episodes):
             #proxy_clf = clf
             random.shuffle(batch)
 
-            log_probs = [] # don't know why this is used
+            log_probs = []
             rewards = []
 
             gaussian = torch.distributions.multivariate_normal.MultivariateNormal(mean, covariance)
@@ -108,12 +110,11 @@ class ExperienceReplay(ContinualLearner):
                 logits = clf.forward(z_t) # makes predictions on the datapoint z_t
                 _, s_t = torch.max(logits, 1)
                 
-                # Log probability could be negative so we use the exponential of the log probability?
                 al_policy = gaussian.log_prob(s_t)
-                pi = torch.exp(al_policy)
+                # pi = torch.exp(al_policy)
                 log_probs.append(al_policy) # storing the log probs here
 
-                bernoulli = torch.distributions.bernoulli.Bernoulli(torch.tensor(pi))
+                bernoulli = torch.distributions.bernoulli.Bernoulli(torch.tensor(al_policy))
                 a_t = bernoulli.sample()
                 #log_probs.append(bernoulli.log_prob(a_t))
                 r_t = torch.tensor(0, requires_grad=True)
@@ -122,8 +123,15 @@ class ExperienceReplay(ContinualLearner):
                     new_set = training_set | memory
                     x_train_new = [x[0] for x in new_set]
                     y_train_new = [x[1] for x in new_set]
-                    proxy_clf = train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
-                    acc = self.accuracy(proxy_clf, validation_set)
+                    # proxy_clf = self.train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
+                    proxy_clf = copy.deepcopy(self.model)
+                    logits = proxy_clf.forward(x_train_new)
+                    l = self.criterion(logits, y_train_new)
+                    self.opt.zero_grad()
+                    l.backward()
+                    self.opt.step()
+
+                    acc = self.accuracy(proxy_clf, self.val_set)
                     # reward signal r_t which is subsequently used to update the agent
                     r_t = (acc-acc_old)/acc_old
                     clf = proxy_clf
@@ -133,8 +141,15 @@ class ExperienceReplay(ContinualLearner):
                     new_set = training_set | memory | pt
                     x_train_new = [x[0] for x in new_set]
                     y_train_new = [x[1] for x in new_set]
-                    cf_clf = train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
-                    acc_cf = self.accuracy(cf_clf, validation_set)
+                    # cf_clf = self.train_learner(x_train_new,y_train_new) # train_learner takes x and y inputs separately
+                    proxy_clf = copy.deepcopy(self.model)
+                    logits = proxy_clf.forward(x_train_new)
+                    l = self.criterion(logits, y_train_new)
+                    self.opt.zero_grad()
+                    l.backward()
+                    self.opt.step()
+                    
+                    acc_cf = self.accuracy(cf_clf, self.val_set)
                     r_t = -(acc_cf-acc_old)/acc_old
                     # proxy_clf remains the same
                     # acc remains the same
@@ -175,7 +190,10 @@ class ExperienceReplay(ContinualLearner):
             print(f"DEBUG: covariance: {covariance}")
         return mean, covariance
     
-    def train_learner(self, x_train, y_train):
+    def train_learner(self, x_train, y_train, data_continuum):
+        
+        self.val_set = data_continuum.val_data()
+
         self.before_train(x_train, y_train)
         # set up loader
         train_dataset = dataset_transform(x_train, y_train, transform=transforms_match[self.data])
