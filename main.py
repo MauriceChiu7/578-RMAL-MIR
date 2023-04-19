@@ -151,4 +151,5 @@ def rmal_al(batch_x, batch_y, al_policy, u, t, budget):
 
 
 if __name__ == "__main__":
-    rmal_al(None, None, None, None, None)
+    print(torch.cuda.is_available())
+    # rmal_al(None, None, None, None, None)

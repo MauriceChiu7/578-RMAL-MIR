@@ -23,5 +23,5 @@ pip install -r requirements.txt
 
 ## Run the program:
 ```sh
-python general_main.py --data cifar100 --cl_type nc --agent ER --retrieve MIR --update random --mem_size 5000
+python general_main.py --data mini_imagenet --cl_type ni --agent ER --retrieve MIR --update random --mem_size 5000
 ```

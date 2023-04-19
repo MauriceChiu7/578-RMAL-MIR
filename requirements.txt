@@ -1,6 +1,6 @@
 -f https://download.pytorch.org/whl/torch_stable.html
-torch
-torchvision
+torch==2.0.0+cu118
+torchvision==0.15.1+cu118
 matplotlib
 scipy
 scikit-image
