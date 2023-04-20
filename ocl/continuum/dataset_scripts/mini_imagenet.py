@@ -20,16 +20,16 @@ class Mini_ImageNet(DatasetBase):
 
 
     def download_load(self):
-        train_in = open("/content/drive/MyDrive/Colab\ Notebooks/datasets/mini_imagenet/mini-imagenet-cache-train.pkl", "rb")
-        # train_in = open("d/atasets/mini_imagenet/mini-imagenet-cache-train.pkl", "rb")
+        # train_in = open("/content/drive/MyDrive/Colab\ Notebooks/datasets/mini_imagenet/mini-imagenet-cache-train.pkl", "rb")
+        train_in = open("/datasets/mini_imagenet/mini-imagenet-cache-train.pkl", "rb")
         train = pickle.load(train_in)
         train_x = train["image_data"].reshape([64, 600, 84, 84, 3])
-        val_in = open("/content/drive/MyDrive/Colab\ Notebooks/datasets/mini_imagenet/mini-imagenet-cache-val.pkl", "rb")
-        # val_in = open("/datasets/mini_imagenet/mini-imagenet-cache-val.pkl", "rb")
+        # val_in = open("/content/drive/MyDrive/Colab\ Notebooks/datasets/mini_imagenet/mini-imagenet-cache-val.pkl", "rb")
+        val_in = open("/datasets/mini_imagenet/mini-imagenet-cache-val.pkl", "rb")
         val = pickle.load(val_in)
         val_x = val['image_data'].reshape([16, 600, 84, 84, 3])
-        test_in = open("/content/drive/MyDrive/Colab\ Notebooks/datasets/mini_imagenet/mini-imagenet-cache-test.pkl", "rb")
-        # test_in = open("/datasets/mini_imagenet/mini-imagenet-cache-test.pkl", "rb")
+        # test_in = open("/content/drive/MyDrive/Colab\ Notebooks/datasets/mini_imagenet/mini-imagenet-cache-test.pkl", "rb")
+        test_in = open("/datasets/mini_imagenet/mini-imagenet-cache-test.pkl", "rb")
         test = pickle.load(test_in)
         test_x = test['image_data'].reshape([20, 600, 84, 84, 3])
         all_data = np.vstack((train_x, val_x, test_x))
