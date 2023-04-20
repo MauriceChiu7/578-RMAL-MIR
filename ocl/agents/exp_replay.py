@@ -305,6 +305,8 @@ class ExperienceReplay(ContinualLearner):
             mean_grad = sum((log_probs[t]-mean)*baseline_term_at_t[t] for t in range(len(log_probs)))*(1/covariance)
             cov_grad = sum((((log_probs[t]-mean) ** 2) - (len(log_probs) * covariance)) * baseline_term_at_t[t] for t in range(len(log_probs)) ) / (2 * (covariance ** 2))
 
+            
+
             mean = torch.add(
                 mean, 
                 torch.mul(
@@ -320,6 +322,10 @@ class ExperienceReplay(ContinualLearner):
                 )
             )
             # print(f"DEBUG: covariance: {covariance}")
+
+            if covariance <= 0:
+                covariance = 0.0001
+
         return mean, covariance
     
     def train_learner(self, x_train, y_train, data_continuum, val_loaders):
