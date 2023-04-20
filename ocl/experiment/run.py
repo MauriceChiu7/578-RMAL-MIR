@@ -1,7 +1,7 @@
 import time
 import numpy as np
 from continuum.continuum import continuum
-from continuum.data_utils import setup_test_loader
+from continuum.data_utils import setup_test_loader, setup_val_loader
 from utils.name_match import agents
 from utils.setup_elements import setup_opt, setup_architecture
 from utils.utils import maybe_cuda
@@ -42,11 +42,12 @@ def multiple_run(params, store=False, save_path=None):
 
         # prepare val data loader
         test_loaders = setup_test_loader(data_continuum.test_data(), params)
+        val_loaders = setup_val_loader(data_continuum.val_data(), params)
         if params.online:
             for i, (x_train, y_train, labels) in enumerate(data_continuum):
                 print("-----------run {} training batch {}-------------".format(run, i))
                 print('size: {}, {}'.format(x_train.shape, y_train.shape))
-                agent.train_learner(x_train, y_train, data_continuum)
+                agent.train_learner(x_train, y_train, data_continuum, val_loaders)
                 acc_array = agent.evaluate(test_loaders)
                 tmp_acc.append(acc_array)
             run_end = time.time()

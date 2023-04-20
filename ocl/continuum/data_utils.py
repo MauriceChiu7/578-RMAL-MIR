@@ -63,6 +63,14 @@ def setup_test_loader(test_data, params):
         test_loaders.append(test_loader)
     return test_loaders
 
+def setup_val_loader(val_data, params):
+    val_loaders = []
+    for (x_val, y_val) in val_data:
+        val_dataset = dataset_transform(x_val, y_val, transform=transforms_match[params.data])
+        val_loader = data.DataLoader(val_dataset, batch_size=params.test_batch, shuffle=True, num_workers=0)
+        val_loaders.append(val_loader)
+    return val_loaders
+
 
 def shuffle_data(x, y):
     perm_inds = np.arange(0, x.shape[0])
