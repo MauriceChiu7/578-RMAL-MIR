@@ -32,14 +32,17 @@ pip install -r requirements.txt
 # =================
 # mini_Imagenet / Online
 # =================
-python general_main.py --seed 0 --agent ER --retrieve MIR --update random --error_analysis True --plot_sample False --mem_size 5000 --cl_type ni --num_runs 5 --data mini_imagenet --ns_type noise --ns_factor 0.0 0.4 0.8 1.2 1.6 2.0 2.4 2.8 3.2 3.6 --online True --budget 0.25 
-# > logs/5runs-mini_imagenet-noise-online-25.txt
+python general_main.py --seed 0 --agent ER --retrieve MIR --update random --error_analysis True --plot_sample False --mem_size 5000 --cl_type ni --num_runs 5 --data mini_imagenet --ns_type noise --ns_factor 0.0 0.4 0.8 1.2 1.6 2.0 2.4 2.8 3.2 3.6 --online True --budget 0.25
+#  > logs/5runs-mini_imagenet-noise-online-25.txt
 
-python general_main.py --seed 0 --agent ER --retrieve MIR --update random --error_analysis True --plot_sample False --mem_size 5000 --cl_type ni --num_runs 5 --data mini_imagenet --ns_type noise --ns_factor 0.0 0.4 0.8 1.2 1.6 2.0 2.4 2.8 3.2 3.6 --online True --budget 0.50 > logs/5runs-mini_imagenet-noise-online-50.txt
+python general_main.py --seed 0 --agent ER --retrieve MIR --update random --error_analysis True --plot_sample False --mem_size 5000 --cl_type ni --num_runs 5 --data mini_imagenet --ns_type noise --ns_factor 0.0 0.4 0.8 1.2 1.6 2.0 2.4 2.8 3.2 3.6 --online True --budget 0.50
+#  > logs/5runs-mini_imagenet-noise-online-50.txt
 
-python general_main.py --seed 0 --agent ER --retrieve MIR --update random --error_analysis True --plot_sample False --mem_size 5000 --cl_type ni --num_runs 5 --data mini_imagenet --ns_type noise --ns_factor 0.0 0.4 0.8 1.2 1.6 2.0 2.4 2.8 3.2 3.6 --online True --budget 0.75 > logs/5runs-mini_imagenet-noise-online-75.txt
+python general_main.py --seed 0 --agent ER --retrieve MIR --update random --error_analysis True --plot_sample False --mem_size 5000 --cl_type ni --num_runs 5 --data mini_imagenet --ns_type noise --ns_factor 0.0 0.4 0.8 1.2 1.6 2.0 2.4 2.8 3.2 3.6 --online True --budget 0.75
+#  > logs/5runs-mini_imagenet-noise-online-75.txt
 
-python general_main.py --seed 0 --agent ER --retrieve MIR --update random --error_analysis True --plot_sample False --mem_size 5000 --cl_type ni --num_runs 5 --data mini_imagenet --ns_type noise --ns_factor 0.0 0.4 0.8 1.2 1.6 2.0 2.4 2.8 3.2 3.6 --online True --budget 0.9 > logs/5runs-mini_imagenet-noise-online-90.txt
+python general_main.py --seed 0 --agent ER --retrieve MIR --update random --error_analysis True --plot_sample False --mem_size 5000 --cl_type ni --num_runs 5 --data mini_imagenet --ns_type noise --ns_factor 0.0 0.4 0.8 1.2 1.6 2.0 2.4 2.8 3.2 3.6 --online True --budget 0.9
+#  > logs/5runs-mini_imagenet-noise-online-90.txt
 
 # python general_main.py --seed 0 --agent ER --retrieve MIR --update random --error_analysis True --plot_sample False --mem_size 5000 --cl_type ni --num_runs 5 --data mini_imagenet --ns_type occlusion --ns_factor 0.0 0.07 0.13 0.2 0.27 0.33 0.4 0.47 0.53 0.6 --online True > logs/5runs-mini_imagenet-occlusion-online.txt
 
