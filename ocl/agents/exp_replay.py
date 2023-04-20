@@ -18,8 +18,8 @@ class ExperienceReplay(ContinualLearner):
         self.mem_size = params.mem_size
         self.eps_mem_batch = params.eps_mem_batch
         self.mem_iters = params.mem_iters
-        self.mean = torch.zeros(10)
-        self.cov = torch.eye(10) # Default batch size is 10
+        self.mean = torch.zeros(1)
+        self.cov = torch.eye(1) # Default batch size is 10
         self.val_set = []
         self.u = 0
         self.t = 1
@@ -50,13 +50,19 @@ class ExperienceReplay(ContinualLearner):
         subset_x = []
         subset_y = []
 
-        gaussian = torch.distributions.multivariate_normal.MultivariateNormal(mean, covariance)
+        # gaussian = torch.distributions.multivariate_normal.MultivariateNormal(mean, covariance)
+        gaussian = torch.distributions.normal.Normal(mean, covariance)
+        # gaussian = maybe_cuda(gaussian, self.cuda)
         for i in range(batch_size):
-            batch_x[i] = maybe_cuda(torch.tensor(batch_x[i]), self.cuda)
+            # print(f"self.cuda: {self.cuda}")
+            # batch_x[i] = maybe_cuda(torch.tensor(batch_x[i]), self.cuda)
             # clf is initially trained on dataset D0 I am not sure how you guys are implementung this part
-            logits = self.model.forward(batch_x[i]) # makes predictions on the datapoint x_t, the prediction is the state s_t
+            logits = self.model.forward(batch_x) # makes predictions on the datapoint x_t, the prediction is the state s_t
             _, s_t = torch.max(logits, 1)
-            al_policy = torch.exp(gaussian.log_prob(s_t))
+            s_t = s_t[i]
+            # print(f"s_t: {s_t}")
+
+            al_policy = torch.exp(gaussian.log_prob((s_t.to(device='cpu'))))
             bernoulli = torch.distributions.bernoulli.Bernoulli(al_policy)
             a_i = bernoulli.sample()
             if (u/t < budget and a_i == 1):
@@ -64,6 +70,9 @@ class ExperienceReplay(ContinualLearner):
                 subset_y = subset_y.append(batch_y[i])
                 u += 1
             t += 1
+        # print(f"type_batch_x: {type(batch_x)}, batch_x: {batch_x}, type_subset_x: {type(subset_x)}, subset_x: {subset_x}")
+        # batch_x is tensor, subset_x is list
+        # exit()
         return subset_x, subset_y, u, t
     
     # Validation set has to be decided
@@ -220,12 +229,23 @@ class ExperienceReplay(ContinualLearner):
                 # batch update
                 batch_x, batch_y = batch_data
                 # active learning: filter batch
-                if self.params.budget < 1.0:
+                batch_x = maybe_cuda(batch_x, self.cuda)
+                batch_y = maybe_cuda(batch_y, self.cuda)
+
+                if self.params.budget < 1.0 and i > 5:
+
                     # batch_x, batch_y, mean, covariance, u, t, budget
                     batch_x, batch_y, self.u, self.t = self.rmal_al(batch_x, batch_y, self.mean, self.cov, self.u, self.t, self.params.budget)
 
-                batch_x = maybe_cuda(batch_x, self.cuda)
-                batch_y = maybe_cuda(batch_y, self.cuda)
+                    if len(batch_x) == 0:
+                        continue
+                    else:
+                        batch_x = torch.tensor(torch.stack(batch_x))
+                        batch_y = torch.tensor(torch.stack(batch_y))
+                        batch_x = maybe_cuda(batch_x, self.cuda)
+                        batch_y = maybe_cuda(batch_y, self.cuda)
+                # batch_x = maybe_cuda(batch_x, self.cuda)
+                # batch_y = maybe_cuda(batch_y, self.cuda)
                 for j in range(self.mem_iters):
                     logits = self.model.forward(batch_x)
                     loss = self.criterion(logits, batch_y)
@@ -245,7 +265,7 @@ class ExperienceReplay(ContinualLearner):
                     loss.backward()
 
                     # active learning: update policy
-                    if self.params.budget < 1.0:
+                    if self.params.budget < 1.0 and i > 5:
                         batch = [(batch_x[j], batch_y[j]) for j in range(batch_x.size(0))]
                         self.mean, self.cov = self.update_policy(self.mean, self.cov, batch)
                     # mem update
